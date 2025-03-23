@@ -134,6 +134,10 @@ export default function Dashboard() {
     }
   };
 
+  const handleClearFilters = useCallback(() => {
+    setActiveFilters(null);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex h-[450px] items-center justify-center">
@@ -236,7 +240,7 @@ export default function Dashboard() {
               variant="ghost" 
               size="sm" 
               className="h-6 px-2 ml-auto" 
-              onClick={() => setActiveFilters(null)}
+              onClick={handleClearFilters}
             >
               Limpar Filtros
             </Button>

@@ -75,12 +75,22 @@ export function FilterDialog({ open, onOpenChange, onApplyFilters }: FilterDialo
   }
 
   const handleResetFilters = () => {
-    setDate({
-      from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-      to: new Date(),
-    })
-    setCategory("all")
-    setType("all")
+    const defaultFilters = {
+      dateRange: {
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        to: new Date(),
+      },
+      category: "all",
+      type: "all"
+    };
+    
+    setDate(defaultFilters.dateRange);
+    setCategory("all");
+    setType("all");
+    
+    // Aplica os filtros padrão e fecha o popup
+    onApplyFilters(defaultFilters);
+    onOpenChange(false);
   }
 
   return (
