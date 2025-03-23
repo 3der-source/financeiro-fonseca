@@ -1,8 +1,6 @@
 import "@/styles/globals.css"
 import { Inter } from "next/font/google"
 import { Providers } from "./providers"
-import { CategoriesProvider } from "@/contexts/categories-context"
-import { ThemeProvider } from "@/components/ui/use-theme-provider"
 import { cn } from "@/lib/utils"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -20,16 +18,8 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={cn("min-h-screen bg-background font-sans antialiased", inter.className)}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <CategoriesProvider>
-            <Providers>{children}</Providers>
-          </CategoriesProvider>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
 }
-
-
-
-import './globals.css'
