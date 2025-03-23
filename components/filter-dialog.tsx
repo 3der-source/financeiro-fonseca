@@ -22,19 +22,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils"
 import { useCategories } from "@/contexts/categories-context"
 
-interface Category {
-  id: string
-  name: string
-  color: string
-  created_at: string
+export interface FilterOptions {
+  dateRange: DateRange | undefined;
+  category: string;
+  type: string;
 }
 
 interface FilterDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onApplyFilters: (filters: FilterOptions) => void;
 }
 
-export function FilterDialog({ open, onOpenChange }: FilterDialogProps) {
+export function FilterDialog({ open, onOpenChange, onApplyFilters }: FilterDialogProps) {
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     to: new Date(),
@@ -65,7 +65,12 @@ export function FilterDialog({ open, onOpenChange }: FilterDialogProps) {
   }
 
   const handleApplyFilters = () => {
-    // Implementar lógica de filtros aqui
+    // Chamar a função de callback com os filtros selecionados
+    onApplyFilters({
+      dateRange: date,
+      category: category,
+      type: type
+    });
     onOpenChange(false)
   }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TransactionDialog } from "@/components/transaction-dialog"
 import { TransactionTable } from "@/components/transaction-table"
-import { FilterDialog } from "@/components/filter-dialog"
+import { FilterDialog, FilterOptions } from "@/components/filter-dialog"
 import { FinancialCharts } from "@/components/financial-charts"
 import { CategoryManager } from "@/components/category-manager"
 import { NotificationDropdown } from "@/components/notification-dropdown"
@@ -31,12 +31,14 @@ import { formatCurrency, formatPercentage } from "@/lib/utils"
 import type { Transaction } from "@/types/transaction"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { FinancialAnalysis } from "@/components/financial-analysis"
+import { Badge } from "@/components/ui/badge"
 
 export default function Dashboard() {
   const [showTransactionDialog, setShowTransactionDialog] = useState(false)
   const [showFilterDialog, setShowFilterDialog] = useState(false)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>()
+  const [activeFilters, setActiveFilters] = useState<FilterOptions | null>(null)
 
   const {
     transactions,
@@ -55,6 +57,48 @@ export default function Dashboard() {
     isLoading,
     pendingCount,
   } = useTransactions()
+
+  const { categories } = useCategories()
+
+  const filteredTransactions = useMemo(() => {
+    if (!activeFilters) return transactions;
+
+    return transactions.filter(transaction => {
+      if (activeFilters.type !== "all") {
+        if (
+          (activeFilters.type === "income" && transaction.type !== "income") ||
+          (activeFilters.type === "expense" && transaction.type !== "expense")
+        ) {
+          return false;
+        }
+      }
+
+      if (activeFilters.category !== "all" && transaction.categoryId !== activeFilters.category) {
+        return false;
+      }
+
+      if (activeFilters.dateRange?.from && activeFilters.dateRange?.to) {
+        const transactionDate = new Date(transaction.date);
+        transactionDate.setHours(12, 0, 0, 0);
+        
+        const fromDate = new Date(activeFilters.dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        const toDate = new Date(activeFilters.dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        
+        if (transactionDate < fromDate || transactionDate > toDate) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [transactions, activeFilters]);
+
+  const handleApplyFilters = useCallback((filters: FilterOptions) => {
+    setActiveFilters(filters);
+  }, []);
 
   const handleAddTransaction = async (transaction: Transaction) => {
     await addTransaction(transaction)
@@ -122,9 +166,16 @@ export default function Dashboard() {
             <Button variant="outline" size="sm" className="md:hidden" onClick={() => setShowCategoryManager(true)}>
               Categorias
             </Button>
-            <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => setShowFilterDialog(true)}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className={`h-8 gap-1 ${activeFilters ? 'border-primary text-primary' : ''}`} 
+              onClick={() => setShowFilterDialog(true)}
+            >
               <FilterIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Filtrar</span>
+              <span className="hidden sm:inline">
+                {activeFilters ? 'Filtros Ativos' : 'Filtrar'}
+              </span>
             </Button>
             <Button
               size="sm"
@@ -139,6 +190,58 @@ export default function Dashboard() {
             </Button>
           </div>
         </div>
+
+        {activeFilters && (
+          <div className="flex flex-wrap items-center gap-2 mb-2 p-2 bg-muted/40 rounded-md">
+            <div className="text-sm text-muted-foreground mr-2">Filtros ativos:</div>
+            
+            {activeFilters.dateRange?.from && activeFilters.dateRange?.to && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <CalendarIcon className="h-3 w-3" />
+                {format(activeFilters.dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - {format(activeFilters.dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+              </Badge>
+            )}
+            
+            {activeFilters.category !== 'all' && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                {(() => {
+                  const category = categories.find(c => c.id === activeFilters.category);
+                  return (
+                    <>
+                      {category && <div className="h-2 w-2 rounded-full" style={{ backgroundColor: category.color }} />}
+                      {category?.name || 'Categoria'}
+                    </>
+                  );
+                })()}
+              </Badge>
+            )}
+            
+            {activeFilters.type !== 'all' && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                {activeFilters.type === 'income' ? (
+                  <>
+                    <ArrowUpIcon className="h-3 w-3 text-emerald-500" />
+                    Entradas
+                  </>
+                ) : (
+                  <>
+                    <ArrowDownIcon className="h-3 w-3 text-red-500" />
+                    Saídas
+                  </>
+                )}
+              </Badge>
+            )}
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 px-2 ml-auto" 
+              onClick={() => setActiveFilters(null)}
+            >
+              Limpar Filtros
+            </Button>
+          </div>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
@@ -221,7 +324,7 @@ export default function Dashboard() {
               categoryData={categoryData}
             />
             <TransactionTable
-              transactions={transactions.slice(0, Math.min(5, transactions.length))}
+              transactions={filteredTransactions.slice(0, Math.min(5, filteredTransactions.length))}
               onEdit={handleEditTransaction}
               onDelete={handleDeleteTransaction}
               onStatusChange={handleStatusChange}
@@ -229,7 +332,7 @@ export default function Dashboard() {
           </TabsContent>
           <TabsContent value="transactions" className="space-y-4">
             <TransactionTable
-              transactions={transactions}
+              transactions={filteredTransactions}
               onEdit={handleEditTransaction}
               onDelete={handleDeleteTransaction}
               onStatusChange={handleStatusChange}
@@ -251,6 +354,7 @@ export default function Dashboard() {
       <FilterDialog
         open={showFilterDialog}
         onOpenChange={setShowFilterDialog}
+        onApplyFilters={handleApplyFilters}
       />
 
       <CategoryManager
